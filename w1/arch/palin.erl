@@ -11,7 +11,7 @@ palindrome(Xs) ->
 nopunct([]) ->
     [];
 nopunct([X|Xs]) ->
-    case lists:member(X,".,\ ;:\t\n\'\"") of
+    case lists:member(X,".,\ ;:\t\n\'\"!") of
 	true ->
 	    nopunct(Xs);
 	false ->
