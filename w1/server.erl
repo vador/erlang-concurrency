@@ -1,16 +1,16 @@
 -module(server).
--export([server/1,tester/0]).
+-export([server/0,tester/0]).
 
-server(Pid) ->
+server() ->
     receive 
-	{check, String} ->
+	{check, Pid, String} ->
 	    case palin:palindrome_check(String) of
 		true ->
 		    Pid ! {result,String ++ " is a palindrome"},
-		    server(Pid);	
+		    server();	
 		_ ->
 		    Pid ! {result,String ++ " is not a palindrome"},
-		    server(Pid)	
+		    server()	
 	    end;
 	_Msg -> 
 	    ok
@@ -19,13 +19,13 @@ server(Pid) ->
 
 tester() ->
     Self = self(),
-    Server = spawn(server,server,[Self]),
-    Server ! {check, "Abba!"},
+    Server = spawn(server,server,[]),
+    Server ! {check, Self, "Abba!"},
     receive
 	Msg ->
 	    io:format("~w~n",[Msg])
     end,
-    Server ! {check, "Abbot!"},
+    Server ! {check, Self, "Abbot!"},
     receive
 	Msg2 ->
 	    io:format("~w~n",[Msg2])
