@@ -34,6 +34,7 @@ init() ->
     Frequencies = {get_frequencies(),[]}, 
     loop(Frequencies).
 
+% Client routine for checking message from multiple sources
 client(Server,Master) ->
     receive
 	{request, Pid, stop} ->
@@ -71,7 +72,7 @@ loop(Frequencies) ->
 % Allocate a free frequency to a client
 % returns ok with allocated freq if a frequency is available, 
 % error, no_frequency if not frequency available
-% TODO : return error if client already has a frequency allocated
+% error, client_already_allocated if client already has a frequency allocated
 allocate({[], Allocated}, _Pid) -> 
     {{[], Allocated},
      {error, no_frequency}};
@@ -87,9 +88,8 @@ allocate({[Freq|Free], Allocated}, Pid) ->
 
 % deallocate a frequency
 % returns the new {free,allocated} lists
-% TODO : return a ok/error message
-% TODO : refuse to deallocate if Freq was not allocated
-%        to the client who request deallocation
+%         or an error if Freq was not allocated
+%         to the client who requested deallocation
 deallocate({Free, Allocated}, Freq, Pid) ->
     case lists:member({Freq, Pid}, Allocated) of
 	true ->
