@@ -7,7 +7,7 @@
 %%   (c) Francesco Cesarini and Simon Thompson
 
 -module(frequency).
--export([start/0,allocate/0,deallocate/1,stop/0]).
+-export([start/0,allocate/0,deallocate/1,stop/0,status/0,clear/0]).
 -export([init/0]).
 
 %% These are the start functions used to create and
@@ -24,27 +24,35 @@ init() ->
 % Hard Coded
 get_frequencies() -> [10,11,12,13,14,15].
 
+
+%% if server latency is greater than timeout, the
+%%   client will receive a "timout" atom 
+%%   the mailbox will be cleared before following request
+
 get_client_timeout() -> 100. % Client timeout for message
-get_server_latency() -> 50. % simulate server heavy workload
+get_server_latency() -> 150. % simulate server heavy workload
 
 %% The Main Loop
 
 loop(Frequencies) ->
-  Latency = get_server_latency(),
-  receive
-    {request, Pid, allocate} ->
-      timer:sleep(Latency),
-      {NewFrequencies, Reply} = allocate(Frequencies, Pid),
-      Pid ! {reply, Reply},
-      loop(NewFrequencies);
-    {request, Pid , {deallocate, Freq}} ->
-      timer:sleep(Latency),
-      NewFrequencies = deallocate(Frequencies, Freq),
-      Pid ! {reply, ok},
-      loop(NewFrequencies);
-    {request, Pid, stop} ->
-      Pid ! {reply, stopped}
-  end.
+    Latency = get_server_latency(),
+    receive
+	{request, Pid, allocate} ->
+	    timer:sleep(Latency),
+	    {NewFrequencies, Reply} = allocate(Frequencies, Pid),
+	    Pid ! {reply, Reply},
+	    loop(NewFrequencies);
+	{request, Pid , {deallocate, Freq}} ->
+	    timer:sleep(Latency),
+	    NewFrequencies = deallocate(Frequencies, Freq),
+	    Pid ! {reply, ok},
+	    loop(NewFrequencies);
+	{request, Pid, status} ->
+	    Pid ! {reply, Frequencies},
+	    loop(Frequencies);
+	{request, Pid, stop} ->
+	    Pid ! {reply, stopped}
+    end.
 
 %% Functional interface
 %% Adding Timeout for request
@@ -59,7 +67,7 @@ allocate() ->
     clear(),
     frequency ! {request, self(), allocate},
     receive 
-	    {reply, Reply} -> Reply
+	{reply, Reply} -> Reply
     after Timeout ->
 	    {timeout}
     end.
@@ -69,9 +77,18 @@ deallocate(Freq) ->
     clear(),
     frequency ! {request, self(), {deallocate, Freq}},
     receive 
-	    {reply, Reply} -> Reply
+	{reply, Reply} -> Reply
     after Timeout ->
 	    {timeout}
+    end.
+
+%% This function was created to check internal status
+%%   of frequency (allocated or not)
+status() ->
+    clear(),
+    frequency ! {request, self(), status},
+    receive 
+	    {reply, Reply} -> Reply
     end.
 
 stop() -> 
@@ -98,10 +115,10 @@ deallocate({Free, Allocated}, Freq) ->
   {[Freq|Free],  NewAllocated}.
 
 %% Mailbox clearing function
-
 clear() ->
     receive
-	_Msg ->
+	Msg ->
+	    io:format("Cleaned message : ~w~n",[Msg]),
 	    clear()
     after 0 ->
 	    ok
